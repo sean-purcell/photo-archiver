@@ -1,0 +1,8 @@
+*.sw*
+*.pickle
+*.tar.zst
+project_credentials.json
+__pycache__/
+env/
+state.json
+gmail_v1.json
