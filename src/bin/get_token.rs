@@ -1,12 +1,11 @@
 use eyre::{Result, WrapErr};
 use structopt::StructOpt;
-use yup_oauth2::{InstalledFlowAuthenticator, InstalledFlowReturnMethod};
+use yup_oauth2::{
+    noninteractive::NoninteractiveTokens, InstalledFlowAuthenticator, InstalledFlowReturnMethod,
+};
 
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "get-access-token",
-    about = "Get access token for the given scopes"
-)]
+#[structopt(name = "get-token", about = "Get token for the given scopes")]
 struct Opt {
     #[structopt(short = "c", long = "client-secret")]
     client_secret: String,
@@ -35,14 +34,15 @@ async fn main() -> Result<()> {
         .await
         .wrap_err("Failed to build authenticator")?;
 
-    let token = auth
-        .token(&opt.scopes)
+    let tokens = NoninteractiveTokens::builder(&auth)?
+        .add_token_for(&opt.scopes, false)
         .await
-        .wrap_err("Failed to get token")?;
+        .wrap_err("Failed to get token")?
+        .build();
 
-    println!("Token: {:?}", token);
+    println!("Tokens: {:?}", tokens);
 
-    let serialized = serde_json::to_string_pretty(&token).wrap_err("Failed to serialize")?;
+    let serialized = serde_json::to_string_pretty(&tokens).wrap_err("Failed to serialize")?;
     std::fs::write(opt.output, serialized).wrap_err("Failed to write access token to file")?;
 
     Ok(())
