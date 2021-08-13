@@ -7,5 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+eyre = "0.6.5"
 google-photoslibrary1 = "2.0.4"
+hyper-tls = "0.5.0"
+serde_json = "1.0.66"
+structopt = "0.3.22"
+tokio = { version = "1.10.0", features = [ "macros", "rt-multi-thread" ] }
 yup-oauth2 = "5.1.0"

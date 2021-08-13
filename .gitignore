@@ -2,6 +2,7 @@
 *.tar.zst
 project_credentials.json
 
+*.json
 
 # Added by cargo
 
