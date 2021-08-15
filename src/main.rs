@@ -6,6 +6,8 @@ use yup_oauth2::{
     NoninteractiveAuthenticator,
 };
 
+mod media_item_iter;
+
 #[derive(Debug, StructOpt)]
 struct Auth {
     #[structopt(short = "t", long = "token")]
