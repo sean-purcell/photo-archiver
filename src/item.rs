@@ -32,6 +32,6 @@ impl Item {
     }
 
     pub fn download_url(&self) -> String {
-        format!("{}=d", self.0.base_url.clone().unwrap())
+        format!("{}=d", self.0.base_url.as_ref().unwrap())
     }
 }
