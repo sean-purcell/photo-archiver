@@ -30,4 +30,8 @@ impl Item {
 
         path
     }
+
+    pub fn download_url(&self) -> String {
+        format!("{}=d", self.0.base_url.clone().unwrap())
+    }
 }

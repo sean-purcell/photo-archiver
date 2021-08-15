@@ -9,6 +9,7 @@ use yup_oauth2::{
     NoninteractiveAuthenticator,
 };
 
+mod downloader;
 mod item;
 mod media_item_iter;
 
@@ -116,9 +117,24 @@ impl Archive {
 }
 
 #[derive(Debug, StructOpt)]
+struct Download {
+    url: String,
+    output: PathBuf,
+}
+
+impl Download {
+    async fn run(&self, _: PhotosLibrary) -> Result<()> {
+        let client = reqwest::Client::new();
+        downloader::download(&client, self.url.as_str(), &self.output).await?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, StructOpt)]
 enum Cmd {
     List(List),
     Archive(Archive),
+    Download(Download),
 }
 
 #[derive(Debug, StructOpt)]
@@ -145,6 +161,7 @@ async fn main() -> Result<()> {
     match args.cmd {
         Cmd::List(list) => list.run(hub).await?,
         Cmd::Archive(archive) => archive.run(hub).await?,
+        Cmd::Download(download) => download.run(hub).await?,
     }
 
     Ok(())
