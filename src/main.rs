@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use eyre::{Result, WrapErr};
 use futures::stream::{StreamExt, TryStreamExt};
 use google_photoslibrary1::PhotosLibrary;
@@ -7,7 +9,10 @@ use yup_oauth2::{
     NoninteractiveAuthenticator,
 };
 
+mod item;
 mod media_item_iter;
+
+use item::Item;
 
 #[derive(Debug, StructOpt)]
 struct Auth {
@@ -25,6 +30,39 @@ impl Auth {
     }
 }
 
+#[derive(enum_utils::FromStr, Debug, Clone, Copy)]
+#[enumeration(case_insensitive)]
+enum Style {
+    Debug,
+    FsPath,
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("Failed to parse {0} as style")]
+struct StyleParseError(String);
+
+impl Style {
+    fn serialize(self, item: &Item) -> String {
+        use Style::*;
+        match self {
+            Debug => format!("{:?}", item.0),
+            FsPath => item.fs_path().into_os_string().into_string().unwrap(),
+        }
+    }
+
+    fn parse(s: &str) -> Result<Self, StyleParseError> {
+        use std::str::FromStr;
+
+        Self::from_str(s).map_err(|()| StyleParseError(s.into()))
+    }
+}
+
+impl std::fmt::Display for Style {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug, StructOpt)]
 struct List {
     #[structopt(
@@ -34,6 +72,14 @@ struct List {
         default_value = "50"
     )]
     num: usize,
+    #[structopt(
+        short = "s",
+        long = "style",
+        help = "Print style for item (options: debug, fspath)",
+        default_value = "debug",
+        parse(try_from_str = Style::parse),
+    )]
+    style: Style,
 }
 
 impl List {
@@ -43,7 +89,8 @@ impl List {
             .enumerate()
             .map(|(i, val)| val.map(|item| (i, item)))
             .try_for_each(|(i, item)| async move {
-                println!("{}: {:?}", i, item);
+                let rep = self.style.serialize(&(item.into()));
+                println!("{}: {}", i, rep);
                 Ok(())
             })
             .await
@@ -59,7 +106,7 @@ struct Archive {
         long = "root-directory",
         help = "Root directory to download photos to"
     )]
-    root_dir: String,
+    root_dir: PathBuf,
 }
 
 impl Archive {
