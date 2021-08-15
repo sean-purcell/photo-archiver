@@ -577,6 +577,7 @@ name = "photo-archiver"
 version = "0.1.0"
 dependencies = [
  "eyre",
+ "futures",
  "google-photoslibrary1",
  "hyper",
  "hyper-rustls",

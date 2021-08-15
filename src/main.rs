@@ -1,10 +1,13 @@
 use eyre::{Result, WrapErr};
+use futures::stream::{StreamExt, TryStreamExt};
 use google_photoslibrary1::PhotosLibrary;
 use structopt::StructOpt;
 use yup_oauth2::{
     authenticator::DefaultAuthenticator, noninteractive::NoninteractiveTokens,
     NoninteractiveAuthenticator,
 };
+
+mod media_item_iter;
 
 #[derive(Debug, StructOpt)]
 struct Auth {
@@ -30,35 +33,21 @@ struct List {
         help = "Number of items to list",
         default_value = "50"
     )]
-    num: u64,
+    num: usize,
 }
 
 impl List {
     async fn run(&self, hub: PhotosLibrary) -> Result<()> {
-        let num = self.num;
-        let mut fetched = 0u64;
-        let mut page_token: Option<String> = None;
-        while fetched < num {
-            let req = hub.media_items().list().page_size(100);
-            let req = match page_token {
-                Some(token) => req.page_token(token.as_str()),
-                None => req,
-            };
-            let (_body, response) = req.doit().await.wrap_err("Failed to list items")?;
-
-            for item in response.media_items.unwrap_or_else(|| vec![]).iter() {
-                if fetched < num {
-                    println!("{}: {:?}", fetched, item);
-                }
-                fetched += 1;
-            }
-
-            match response.next_page_token {
-                Some(token) => page_token = Some(token),
-                None => break,
-            }
-        }
-
+        let iter = media_item_iter::list(hub);
+        iter.take(self.num)
+            .enumerate()
+            .map(|(i, val)| val.map(|item| (i, item)))
+            .try_for_each(|(i, item)| async move {
+                println!("{}: {:?}", i, item);
+                Ok(())
+            })
+            .await
+            .wrap_err("Failed to list items")?;
         Ok(())
     }
 }
