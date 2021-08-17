@@ -3,9 +3,14 @@ use std::path::Path;
 use eyre::{Report, Result};
 use futures::stream::TryStreamExt;
 use reqwest::Client;
-use tokio::{fs::File, io::AsyncWriteExt};
+use tokio::{
+    fs::{self, File},
+    io::AsyncWriteExt,
+};
 
 pub async fn download(client: &Client, url: &str, file: impl AsRef<Path>) -> Result<()> {
+    let parent = file.as_ref().parent().unwrap();
+    fs::create_dir_all(parent).await?;
     let file = File::create(file).await?;
     let response = client.get(url).send().await?;
 

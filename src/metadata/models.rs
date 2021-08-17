@@ -2,8 +2,6 @@ use std::path::Path;
 
 use chrono::{offset::Utc, DateTime, NaiveDateTime};
 
-use crate::item::Item;
-
 use super::schema::*;
 
 #[derive(Clone, Debug, Insertable, Queryable)]
@@ -23,8 +21,8 @@ impl Media {
         download_time: DateTime<Utc>,
     ) -> Self {
         Media {
-            id: item.id().to_string(),
-            file_path: file_path.to_string(),
+            id: id.to_string(),
+            file_path: file_path.as_ref().to_str().unwrap().to_string(),
             creation_date: creation_time.naive_utc(),
             download_date: download_time.naive_utc(),
         }

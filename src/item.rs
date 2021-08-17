@@ -20,6 +20,7 @@ impl Item {
         let date: DateTime<Utc> = DateTime::parse_from_rfc3339(creation_time.as_str())
             .unwrap()
             .into();
+        date
     }
 
     pub fn fs_path(&self) -> PathBuf {
@@ -28,9 +29,9 @@ impl Item {
         let filename = self.0.filename.clone().unwrap();
 
         let mut path = PathBuf::new();
-        path.push(date.year().to_string());
-        path.push(date.month().to_string());
-        path.push(date.day().to_string());
+        path.push(format!("{:04}", date.year()));
+        path.push(format!("{:02}", date.month()));
+        path.push(format!("{:02}", date.day()));
         path.push(filename);
 
         path
@@ -41,6 +42,6 @@ impl Item {
     }
 
     pub fn id(&self) -> String {
-        self.id.unwrap().clone()
+        self.0.id.clone().unwrap()
     }
 }
