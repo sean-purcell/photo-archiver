@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use chrono::{offset::Utc, DateTime, Datelike};
 use derive_more::From;
 use google_photoslibrary1::api::MediaItem;
+use serde::Serialize;
 
-#[derive(Debug, From)]
+#[derive(Debug, From, Serialize)]
 pub struct Item(pub MediaItem);
 
 impl Item {

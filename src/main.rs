@@ -47,6 +47,7 @@ impl Auth {
 enum Style {
     Debug,
     FsPath,
+    Json,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -59,6 +60,7 @@ impl Style {
         match self {
             Debug => format!("{:?}", item.0),
             FsPath => item.fs_path().into_os_string().into_string().unwrap(),
+            Json => serde_json::to_string(item).unwrap(),
         }
     }
 
@@ -87,11 +89,17 @@ struct List {
     #[structopt(
         short = "s",
         long = "style",
-        help = "Print style for item (options: debug, fspath)",
+        help = "Print style for item (options: debug, fspath, json)",
         default_value = "debug",
         parse(try_from_str = Style::parse),
     )]
     style: Style,
+    #[structopt(
+        short = "I",
+        long = "no-index",
+        help = "Don't print the index of each entry"
+    )]
+    no_index: bool,
 }
 
 impl List {
@@ -102,7 +110,12 @@ impl List {
             .map(|(i, val)| val.map(|item| (i, item)))
             .try_for_each(|(i, item)| async move {
                 let rep = self.style.serialize(&(item.into()));
-                println!("{}: {}", i, rep);
+                let idx = if self.no_index {
+                    "".to_string()
+                } else {
+                    format!("{}: ", i)
+                };
+                println!("{}{}", idx, rep);
                 Ok(())
             })
             .await
