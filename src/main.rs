@@ -3,7 +3,7 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Mutex};
 
 use eyre::{Result, WrapErr};
 use futures::stream::{StreamExt, TryStreamExt};
@@ -114,11 +114,75 @@ struct Archive {
         help = "Root directory to download photos to"
     )]
     root_dir: PathBuf,
+    #[structopt(
+        short = "c",
+        long = "concurrency",
+        help = "Max concurrent downloads",
+        default_value = "4"
+    )]
+    concurrent_downloads: usize,
+}
+
+#[derive(Debug, Default, Copy, Clone)]
+struct ArchivalStats {
+    downloaded: usize,
+    skipped: usize,
+    errored: usize,
+}
+
+impl ArchivalStats {
+    fn new() -> Self {
+        Default::default()
+    }
 }
 
 impl Archive {
-    async fn run(&self, _: PhotosLibrary) -> Result<()> {
-        Ok(())
+    async fn run(&self, hub: PhotosLibrary) -> Result<()> {
+        let metadata = Mutex::new(Metadata::create(self.root_dir.clone())?);
+        let stats = Mutex::new(ArchivalStats::new());
+        let items_iter = media_item_iter::list(&hub);
+
+        let client = reqwest::Client::new();
+
+        let result = items_iter
+            .try_for_each_concurrent(Some(self.concurrent_downloads), |media_item| async move {
+                let item = Item(media_item);
+
+                let id = item.id();
+
+                if metadata.lock().exists(id) {
+                    stats.lock().skipped += 1;
+                    log::debug!("Skipping {}", id);
+                } else {
+                    let fs_path = item.fs_path();
+                    let full_path = self.root_dir.clone().join(fs_path);
+                    let download_url = item.download_url();
+
+                    match downloader::download(&client, download_url.as_str(), full_path).await {
+                        Ok(()) => {
+                            let metadata_item = metadata::Media::new(
+                                id.as_str(),
+                                fs_path,
+                                item.creation_time(),
+                                chrono::offset::Utc::now(),
+                            );
+                            metadata.lock().insert(&metadata_item)?;
+                            stats.lock().downloaded += 1;
+                            log::info!("Downloaded {} to {}", id, fs_path);
+                        }
+                        Err(error) => {
+                            stats.lock().errored += 1;
+                            log::error!("Failed to download {}: {}", id, error);
+                        }
+                    }
+                }
+                Ok(())
+            })
+            .await;
+
+        println!("Result: {:?}", stats.lock());
+
+        result
     }
 }
 
@@ -155,6 +219,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init_from_env();
+
     let args = Args::from_args();
 
     let authenticator = args.auth.authenticator().await?;

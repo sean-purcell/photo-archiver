@@ -40,8 +40,12 @@ impl Metadata {
         Ok(())
     }
 
-    pub fn find(&self, key: String) -> Result<Option<Media>> {
+    pub fn find(&self, id: &str) -> Result<Option<Media>> {
         use schema::media::dsl::*;
-        Ok(media.find(key).first(&self.db).optional()?)
+        Ok(media.find(&str).first(&self.db).optional()?)
+    }
+
+    pub fn exists(&self, id: &str) -> bool {
+        self.find(id).is_some()
     }
 }
