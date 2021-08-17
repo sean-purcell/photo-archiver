@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate diesel;
+
 use std::path::PathBuf;
 
 use eyre::{Result, WrapErr};
@@ -12,6 +15,7 @@ use yup_oauth2::{
 mod downloader;
 mod item;
 mod media_item_iter;
+mod metadata;
 
 use item::Item;
 
