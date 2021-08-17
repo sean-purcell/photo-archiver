@@ -10,7 +10,8 @@ default-run = "photo-archiver"
 [dependencies]
 chrono = "0.4.19"
 derive_more = "0.99.16"
-diesel = { version = "1.4.7", features = ["sqlite"] }
+diesel = { version = "1.4.7", features = ["chrono", "sqlite"] }
+diesel_migrations = "1.4.0"
 enum-utils = "0.1.2"
 eyre = "0.6.5"
 futures = "0.3.16"
