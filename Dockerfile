@@ -1,10 +1,11 @@
-FROM ubuntu:20.04
+FROM ubuntu:21.10
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
-    cron
+    cron \
+    libssl-dev
 
 ADD target/release/photo-archiver /app/
 
