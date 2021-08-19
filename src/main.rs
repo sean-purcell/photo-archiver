@@ -3,10 +3,7 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
+use std::path::PathBuf;
 
 use eyre::{Report, Result, WrapErr};
 use futures::stream::{StreamExt, TryStreamExt};
@@ -18,13 +15,14 @@ use yup_oauth2::{
     NoninteractiveAuthenticator,
 };
 
+mod archiver;
 mod downloader;
 mod item;
 mod media_item_iter;
 mod metadata;
 
+use archiver::Archiver;
 use item::Item;
-use metadata::Metadata;
 
 #[derive(Debug, StructOpt)]
 struct Auth {
@@ -147,78 +145,25 @@ struct Archive {
     dry_run: bool,
 }
 
-#[derive(Debug, Default, Copy, Clone)]
-struct ArchivalStats {
-    downloaded: usize,
-    skipped: usize,
-    errored: usize,
-}
-
-impl ArchivalStats {
-    fn new() -> Self {
-        Default::default()
-    }
-}
-
 impl Archive {
     async fn run(&self, hub: PhotosLibrary) -> Result<()> {
-        let metadata = &Arc::new(Mutex::new(Metadata::create(self.root_dir.clone())?));
-        let stats = &Arc::new(Mutex::new(ArchivalStats::new()));
+        let archiver = &Archiver::create(&self.root_dir)?;
         let items_iter = media_item_iter::list(&hub);
-
-        let client = &Arc::new(reqwest::Client::new());
 
         let result = items_iter
             .map_err(Report::new)
             .try_for_each_concurrent(Some(self.concurrent_downloads), {
                 |media_item| async move {
-                    let metadata = metadata.clone();
-                    let stats = stats.clone();
-                    let client = client.clone();
+                    let archiver = archiver.clone();
 
                     let item = Item(media_item);
 
-                    let id = item.id();
-
-                    if metadata.lock().unwrap().exists(id.as_str())? {
-                        stats.lock().unwrap().skipped += 1;
-                        log::debug!("Skipping {}", id);
-                    } else {
-                        let fs_path = item.fs_path();
-                        let full_path = self.root_dir.clone().join(&fs_path);
-                        let download_url = item.download_url();
-
-                        let result = if self.dry_run {
-                            Ok(())
-                        } else {
-                            downloader::download(&client, download_url.as_str(), full_path).await
-                        };
-                        match result {
-                            Ok(()) => {
-                                let metadata_item = metadata::Media::new(
-                                    id.as_str(),
-                                    &fs_path,
-                                    item.creation_time(),
-                                    chrono::offset::Utc::now(),
-                                );
-                                if !self.dry_run {
-                                    metadata.lock().unwrap().insert(&metadata_item)?;
-                                }
-                                stats.lock().unwrap().downloaded += 1;
-                                log::info!("Downloaded {} to {}", id, fs_path.to_string_lossy());
-                            }
-                            Err(error) => {
-                                stats.lock().unwrap().errored += 1;
-                                log::error!("Failed to download {}: {}", id, error);
-                            }
-                        }
-                    }
-                    Ok(())
+                    archiver.download_one(&item).await
                 }
             })
             .await;
 
-        println!("Result: {:?}", stats.lock());
+        println!("Result: {:?}", archiver.stats());
 
         result
     }
