@@ -39,7 +39,11 @@ impl Item {
     }
 
     pub fn download_url(&self) -> String {
-        format!("{}=d", self.0.base_url.as_ref().unwrap())
+        let suffix = match self.0.media_metadata.as_ref().unwrap().video {
+            Some(_) => "dv",
+            None => "d",
+        };
+        format!("{}={}", self.0.base_url.as_ref().unwrap(), suffix)
     }
 
     pub fn id(&self) -> String {

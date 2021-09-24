@@ -106,7 +106,12 @@ impl Archiver {
                     downloader::download(&self.client, download_url.as_str(), full_path).await;
                 (match &result {
                     Ok(()) => {
-                        log::info!("Downloaded {} to {}", id, fs_path.to_string_lossy());
+                        log::info!(
+                            "Downloaded {} from {} to {}",
+                            id,
+                            download_url,
+                            fs_path.to_string_lossy()
+                        );
                     }
                     Err(error) => {
                         log::error!("Failed to download {}: {}", id, error);

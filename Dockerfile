@@ -5,7 +5,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
     cron \
-    libssl-dev
+    libssl-dev \
+    ca-certificates
 
 ADD target/release/photo-archiver /app/
 
