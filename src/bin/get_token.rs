@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
         .await
         .wrap_err("Failed to read application secret")?;
 
-    let auth = InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::Interactive)
+    let auth = InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
         .build()
         .await
         .wrap_err("Failed to build authenticator")?;

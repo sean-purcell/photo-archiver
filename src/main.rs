@@ -147,7 +147,7 @@ struct Archive {
 
 impl Archive {
     async fn run(&self, hub: PhotosLibrary) -> Result<()> {
-        let archiver = &Archiver::create(&self.root_dir)?;
+        let archiver = &Archiver::create(&self.root_dir).wrap_err("Failed to create archiver")?;
         let items_iter = media_item_iter::list(&hub);
 
         let result = items_iter
@@ -209,7 +209,11 @@ async fn main() -> Result<()> {
 
     let args = Args::from_args();
 
-    let authenticator = args.auth.authenticator().await?;
+    let authenticator = args
+        .auth
+        .authenticator()
+        .await
+        .wrap_err("Failed to get authenticator")?;
 
     let https = hyper_rustls::HttpsConnector::with_native_roots();
     let client = hyper::Client::builder().build(https);

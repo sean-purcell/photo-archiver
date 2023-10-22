@@ -33,7 +33,8 @@ where
                             Some(token) => req.page_token(token.as_str()),
                             None => req,
                         };
-                        let (_body, response) = req.doit().await?;
+                        let result = req.doit().await;
+                        let (_body, response) = result?;
                         let done = response.next_page_token.is_none();
                         let mut items = response.media_items.unwrap_or_else(|| vec![]);
                         items.reverse();
